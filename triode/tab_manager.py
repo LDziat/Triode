@@ -44,6 +44,7 @@ class TabManager(QTabWidget):
         self.settings = settings
         self.address_controller = address_controller
         self.backend = get_browser_backend(settings["browser"]["engine"])
+        self.clipboard = None
 
         # regular tab behavior
         self.setTabsClosable(True)
@@ -107,7 +108,6 @@ class TabManager(QTabWidget):
         insert_index = 1
         super().insertTab(insert_index, tab, "Browser")
         if self.address_controller:
-            print("linking signal")
             tab.url_changed.connect(self.address_controller.set_route_from_browser)
         else:
             print(self.address_controller)
@@ -200,10 +200,10 @@ class TabManager(QTabWidget):
         if hasattr(current_tab, "_view"):
             try:
                 url = current_tab._view.url().toString()
-                print(url)
+                #print(url)
             except Exception:
                 url = ""
-                print("url not found error")
+                #print("url not found error")
             
             if url.startswith(("http://", "https://")):
                 scheme = "https" if url.startswith("https://") else "http"
@@ -223,7 +223,11 @@ class TabManager(QTabWidget):
 
         # ExplorerTab (has current_path attribute)
         if hasattr(current_tab, "current_path"):
-            self.address_controller.set_route_file(current_tab.current_path)
+            
+            if hasattr(current_tab, "current_path"):
+                self.address_controller.set_route_file(current_tab.current_path)
+                self.address_controller.attach_tab_signals(current_tab)
+                return
             return
 
         # TerminalTab (has cwd attribute)
@@ -234,3 +238,15 @@ class TabManager(QTabWidget):
         # GenericTab / unknown: leave address bar unchanged
         return
 
+    # ---------- Clipboard helpers ----------
+    def set_clipboard(self, action: str, paths: list[str]) -> None:
+        """Set app clipboard; action is 'copy' or 'cut'."""
+        if action not in ("copy", "cut"):
+            raise ValueError("action must be 'copy' or 'cut'")
+        self.clipboard = {"action": action, "paths": [str(p) for p in paths]}
+
+    def clear_clipboard(self) -> None:
+        self.clipboard = None
+
+    def get_clipboard(self):
+        return self.clipboard

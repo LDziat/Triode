@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import sys
 from typing import List
+from pathlib import Path
 
 def list_dir(path: str) -> List[os.DirEntry]:
     """Return a sorted list of DirEntry for given path."""
@@ -54,3 +55,18 @@ def open_item(path: str) -> str:
     except Exception:
         pass
     return path
+
+
+def make_directory(path: str, name: str) -> str:
+    """Create a new directory inside path with given name. Return absolute path."""
+    p = Path(path) / name
+    p.mkdir(parents=False, exist_ok=False)
+    return str(p.resolve())
+
+def make_file(path: str, name: str, contents: str = "") -> str:
+    """Create a new text file inside path. Return absolute path."""
+    p = Path(path) / name
+    if p.exists():
+        raise FileExistsError(str(p))
+    p.write_text(contents, encoding="utf-8")
+    return str(p.resolve())

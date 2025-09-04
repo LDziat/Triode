@@ -21,6 +21,8 @@ class AddressBarController:
     def attach_tab_signals(self, tab):
         if isinstance(tab, BrowserTab):
             tab.url_changed.connect(self._on_tab_url_changed)
+        elif hasattr(tab, "path_changed"):
+            tab.path_changed.connect(self._on_tab_path_changed)
 
     def set_route_from_browser(self, url: str):
         print("AddressBarController received url:", url)
@@ -40,6 +42,9 @@ class AddressBarController:
         if self.line_edit:
             self.line_edit.setText(url)
 
+    def _on_tab_path_changed(self, path: str):
+        if self.line_edit:
+            self.line_edit.setText(f"file://{path}")
 
     def _on_submit(self) -> None:
         if not self.line_edit:

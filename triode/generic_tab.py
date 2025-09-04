@@ -38,7 +38,7 @@ class GenericTab(QWidget):
         insert_index = 1
         self.manager.insertTab(insert_index, tab, "Browser")
         if self.manager.address_controller:
-            print("linking signal")
+            
             tab.url_changed.connect(self.manager.address_controller.set_route_from_browser)
         self.manager.removeTab(self.manager.indexOf(self))
         self.manager.setCurrentIndex(insert_index)

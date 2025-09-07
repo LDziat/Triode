@@ -4,7 +4,7 @@
 import os
 import pty
 import fcntl
-import termios
+#import termios
 import struct
 import subprocess
 import errno
@@ -202,7 +202,7 @@ class TerminalTab(QWidget):
 
     def _spawn_pty(self, shell_cmd: str, cwd: str):
         master_fd, slave_fd = pty.openpty()
-        
+        """
         try:
             tty.setraw(slave_fd)
             attrs = termios.tcgetattr(slave_fd)
@@ -210,10 +210,10 @@ class TerminalTab(QWidget):
             termios.tcsetattr(slave_fd, termios.TCSANOW, attrs)
         except (termios.error, AttributeError):
             pass
-
+        """
         env = os.environ.copy()
         env.update({"TERM": "xterm-256color"})
-
+        
         try:
             process = subprocess.Popen(
                 [shell_cmd, "--login"],
@@ -291,7 +291,7 @@ class TerminalTab(QWidget):
     def resize_terminal(self, rows: int, cols: int):
         self.screen.resize(lines=rows, columns=cols)
         winsz = struct.pack('HHHH', rows, cols, 0, 0)
-        fcntl.ioctl(self.master_fd, termios.TIOCSWINSZ, winsz)
+        #fcntl.ioctl(self.master_fd, termios.TIOCSWINSZ, winsz)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

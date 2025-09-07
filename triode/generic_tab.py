@@ -1,6 +1,7 @@
 # triode/generic_tab.py
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QPixmap
 from .browser.factory import get_browser_backend
 
 
@@ -12,12 +13,20 @@ class GenericTab(QWidget):
         self.backend = manager.backend
 
         layout = QVBoxLayout(self)
+
+        logo = QLabel(self)
+        pixmap = QPixmap('logo.png')
+        newsize = QSize(271, 78)
+        pixmap = pixmap.scaled(newsize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        logo.setPixmap(pixmap)
+        layout.addWidget(logo)
+
         newtab_label = QLabel(
             "<div style='" +
             "font-size: 24pt;" +
             "" +
             "'>" +
-            "<h1>Triode Help</h1><hr>" +
+            "<h1>How to use:</h1><hr>" +
             "http:// & https:// - Browser<br>" +
             "file:// - File Explorer<br>" +
             "term:// - Terminal" +

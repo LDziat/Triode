@@ -7,7 +7,7 @@ from .backend import BrowserBackend
 # for WebKitGTK until you install PyGObject + WebKit2GTK.
 # Later we can implement a true GtkWidget backend for Unix.
 
-class WebKitGTKBackend(BrowserBackend):
+class QTBackend(BrowserBackend):
     def create_view(self, parent: QWidget | None = None) -> QWidget:
         container = QWidget(parent)
         layout = QVBoxLayout(container)

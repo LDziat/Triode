@@ -16,9 +16,7 @@ class URLRouter:
             path = self._from_file_uri(text)
             return URLRoute(scheme="file", path=path, query={})
         if text.startswith("term://"):
-            path = text[len("term://"):]
-            norm = os.path.abspath(os.path.expanduser(path))
-            return URLRoute(scheme="term", path=norm, query={})
+            return URLRoute(scheme="term", path=text[7:])
         # fallback: consider as file path or http (if looks like domain)
         if " " not in text and "." in text and not os.path.exists(text):
             # heuristic: treat as HTTP if contains dot and no local path

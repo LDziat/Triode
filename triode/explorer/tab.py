@@ -105,6 +105,8 @@ class ExplorerTab(QWidget):
         if os.path.isdir(path):
             self.current_path = os.path.abspath(path)
             self.refresh()
+            self.path_changed.emit(self.current_path)  # Emit after navigation
+            print(f"[ExplorerTab] navigated to {self.current_path}")
 
     def go_up(self):
         parent = os.path.dirname(self.current_path)

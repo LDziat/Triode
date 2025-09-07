@@ -1,5 +1,6 @@
 # triode/generic_tab.py
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel
+from PySide6.QtCore import Qt
 from .browser.factory import get_browser_backend
 
 
@@ -11,21 +12,33 @@ class GenericTab(QWidget):
         self.backend = manager.backend
 
         layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("Choose tab type:"))
+        newtab_label = QLabel(
+            "<div style='" +
+            "font-size: 24pt;" +
+            "" +
+            "'>" +
+            "<h1>Triode Help</h1><hr>" +
+            "http:// & https:// - Browser<br>" +
+            "file:// - File Explorer<br>" +
+            "term:// - Terminal" +
+            "</div>"
+            )
+        
+        layout.addWidget(newtab_label)
 
-        browser_btn = QPushButton("Open Browser")
-        explorer_btn = QPushButton("Open Explorer")
-        terminal_btn = QPushButton("Open Terminal")
+        #browser_btn = QPushButton("Open Browser")
+        #explorer_btn = QPushButton("Open Explorer")
+        #terminal_btn = QPushButton("Open Terminal")
         close_btn = QPushButton("Close Tab")
 
-        browser_btn.clicked.connect(self._open_browser)
-        explorer_btn.clicked.connect(self._open_explorer)
-        terminal_btn.clicked.connect(self._open_terminal)
+        #browser_btn.clicked.connect(self._open_browser)
+        #explorer_btn.clicked.connect(self._open_explorer)
+        #terminal_btn.clicked.connect(self._open_terminal)
         close_btn.clicked.connect(self._close_tab)
 
-        layout.addWidget(browser_btn)
-        layout.addWidget(explorer_btn)
-        layout.addWidget(terminal_btn)
+        #layout.addWidget(browser_btn)
+        #layout.addWidget(explorer_btn)
+        #layout.addWidget(terminal_btn)
         layout.addWidget(close_btn)
 
     def _open_browser(self):

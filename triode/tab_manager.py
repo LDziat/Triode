@@ -102,29 +102,101 @@ class TabManager(QTabWidget):
         self.setCurrentIndex(insert_index)
         return tab
 
+    def _get_prefix(self, tab_type: str) -> str:
+        """Get prefix based on settings and tab type."""
+        prefix_style = self.settings.get("tab", {}).get("prefix_style")
+        
+        if not prefix_style:
+            return ""
+            
+        prefixes = {
+            "long": {
+                "browser": "Browser - ",
+                "explorer": "Explorer - ",
+                "terminal": "Terminal - "
+            },
+            "short": {
+                "browser": "B - ",
+                "explorer": "E - ",
+                "terminal": "T - "
+            },
+            "icon": {
+                "browser": "🌐 ",
+                "explorer": "📁 ",
+                "terminal": "⌨️ "
+            }
+        }
+        
+        style_prefixes = prefixes.get(prefix_style, {})
+        return style_prefixes.get(tab_type, "")
+
     def create_browser_tab(self, url: str = "https://example.com") -> BrowserTab:
-        """Create a BrowserTab at index 1 (or next available)."""
         tab = BrowserTab(url)
         insert_index = 1
-        super().insertTab(insert_index, tab, "Browser")
+        prefix = self._get_prefix('browser')
+        
+        # Insert tab first so indexOf works
+        super().insertTab(insert_index, tab, f"{prefix}Loading...")
+        
+        # Bind title updates
+        tab._view.titleChanged.connect(
+            lambda title, t=tab: self._apply_title_to_widget(t, title, 'browser')
+        )
+        
+        # Bind URL updates for address bar
         if self.address_controller:
             tab.url_changed.connect(self.address_controller.set_route_from_browser)
-        else:
-            print(self.address_controller)
+            self.address_controller.attach_tab_signals(tab)
+        
         self.setCurrentIndex(insert_index)
         return tab
 
+
     def create_explorer_tab(self, initial_path: Optional[str] = None) -> ExplorerTab:
-        """Create an ExplorerTab at index 1 (or next available)."""
         path = initial_path or os.path.expanduser("~")
         tab = ExplorerTab(path)
         insert_index = 1
-        super().insertTab(insert_index, tab, "Explorer")
-        self.setCurrentIndex(insert_index)
-
-        # Wire explorer path changes to address bar if controller exists
-        if hasattr(tab, "path_changed") and self.address_controller:
+        prefix = self._get_prefix('explorer')
+        
+        # Insert tab first
+        super().insertTab(insert_index, tab, f"{prefix}{os.path.basename(path)}")
+        
+        # Bind path updates for title
+        tab.path_changed.connect(
+            lambda path, t=tab: self._apply_title_to_widget(t, path, 'explorer')
+        )
+        
+        # Bind path updates for address bar
+        if self.address_controller:
             tab.path_changed.connect(self.address_controller.set_route_file)
+        
+        self.setCurrentIndex(insert_index)
+        return tab
+
+    def create_terminal_tab(self, initial_path: Optional[str] = None) -> "TerminalTab":
+        from .terminal.tab import TerminalTab
+        tab = TerminalTab(initial_path)
+        insert_index = 1
+        prefix = self._get_prefix('terminal')
+        
+        # Set initial title with prefix
+        super().insertTab(insert_index, tab, f"{prefix}Terminal")
+        
+        # Connect path change signal
+        tab.path_changed.connect(
+            lambda path: self.setTabText(
+                self.indexOf(tab), 
+                f"{prefix}{os.path.basename(path)}"
+            )
+        )
+        
+        # Connect to address bar
+        if self.address_controller:
+            tab.path_changed.connect(
+                lambda path: self.address_controller.set_route_file(f"term://{path}")
+            )
+        
+        self.setCurrentIndex(insert_index)
         return tab
 
     # ---------- Close / Destroy ----------
@@ -173,6 +245,8 @@ class TabManager(QTabWidget):
             # Only plus tab remains; select it
             self.setCurrentIndex(0)
 
+
+
     # ---------- Tab change logic ----------
     def _on_current_changed(self, index: int) -> None:
         """Handle when the current tab changes (update address bar, re-hide plus)."""
@@ -189,6 +263,7 @@ class TabManager(QTabWidget):
             return
         # Update address bar according to the active tab
         self.on_tab_changed(index)
+
 
     def on_tab_changed(self, index: int) -> None:
         """Update the address bar using the currently active tab's state."""
@@ -235,6 +310,7 @@ class TabManager(QTabWidget):
             self.address_controller.set_route_file(current_tab.cwd)
             return
 
+
         # GenericTab / unknown: leave address bar unchanged
         return
 
@@ -250,3 +326,96 @@ class TabManager(QTabWidget):
 
     def get_clipboard(self):
         return self.clipboard
+
+        # ---------- Title signal handlers ----------
+    def _apply_title_to_widget(self, widget: QWidget, raw_title: str, tab_type: str) -> None:
+        """
+        Format raw_title with prefix and set the tab text for widget if it still exists.
+        raw_title: page title (browser) or path (explorer/terminal) - may be empty.
+        tab_type: "browser" | "explorer" | "terminal" | "generic"
+        """
+        prefix = self._get_prefix(tab_type)
+        # Normalize/shorten raw_title for explorer/terminal
+        if tab_type == "explorer":
+            # raw_title may be a path; show basename
+            try:
+                raw_title = os.path.basename(os.path.abspath(str(raw_title))).strip() or str(raw_title)
+            except Exception:
+                raw_title = str(raw_title)
+        elif tab_type == "terminal":
+            try:
+                raw_title = os.path.basename(str(raw_title).rstrip(os.sep)) or str(raw_title)
+            except Exception:
+                raw_title = str(raw_title)
+        else:
+            raw_title = (raw_title or "").strip() or ""
+
+        display = f"{prefix}{raw_title}" if prefix else (raw_title or "New Tab")
+        idx = self.indexOf(widget)
+        if idx != -1:
+            self.setTabText(idx, display)
+            # Optional: keep full title as tooltip for hover
+            try:
+                self.setTabToolTip(idx, raw_title)
+            except Exception:
+                pass
+
+    def _on_tab_title_signal(self, widget: QWidget, emitted_value: str, tab_type: str) -> None:
+        """
+        Generic slot that handles title/path emitted by a tab signal.
+        This is the function we connect to title_changed / path_changed.
+        """
+        # Safety: widget might have been removed already
+        if self.indexOf(widget) == -1:
+            return
+        # For browser tabs the emitted_value is usually the page <title>.
+        # For explorer tabs it is the path; pass it through apply helper.
+        self._apply_title_to_widget(widget, emitted_value, tab_type)
+
+    def _bind_tab_title_signals(self, widget: QWidget, kind: str) -> None:
+        """
+        Attach the widget's signals to TabManager so the tab title updates live.
+        kind: 'browser' | 'explorer' | 'terminal' | 'generic'
+        """
+        # BrowserTab: has title_changed and url_changed (you defined already)
+        print("Binding tab signals for", kind)
+        if hasattr(widget, "title_changed"):
+            try:
+                # widget.title_changed emits a str (page title or custom string)
+                print("Binding title_changed for", kind)
+                widget.title_changed.connect(lambda t, w=widget, k=kind: self._on_tab_title_signal(w, t, k))
+            except Exception:
+                print("Failed to connect title_changed")
+                print(Exception)
+                pass
+
+
+        # Browser fallback: some code emits url_changed instead
+        if kind == "browser" and hasattr(widget, "url_changed"):
+            try:
+                print("Binding url_changed for", kind)
+                widget.url_changed.connect(lambda u, w=widget, k=kind: self._on_tab_title_signal(w, widget._view.title() if hasattr(widget, "_view") else u, k))
+            except Exception:
+                print("Failed to connect url_changed")
+                print(Exception)
+                pass
+
+        # Explorer emits path_changed (path string)
+        if kind == "explorer" and hasattr(widget, "path_changed"):
+            try:
+                print("Binding path_changed for", kind)
+                widget.path_changed.connect(lambda p, w=widget, k=kind: self._on_tab_title_signal(w, p, k))
+            except Exception:
+                print("Failed to connect path_changed")
+                print(Exception)
+                pass
+
+        # Terminal would emit title_changed/cwd changes similarly (if present)
+        if kind == "terminal" and hasattr(widget, "title_changed"):
+            try:
+                print("Binding title_changed for", kind)
+                widget.title_changed.connect(lambda t, w=widget, k=kind: self._on_tab_title_signal(w, t, k))
+            except Exception:
+                print("Failed to connect title_changed")
+                print(Exception)
+                pass

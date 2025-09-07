@@ -39,8 +39,13 @@ class AddressBarController:
         """Update address bar with a file:// or term:// path."""
         if self.line_edit:
             # Check if it's a terminal tab
+            print("Setting file path in address bar:", path)
             if isinstance(self.tab_manager.currentWidget(), TerminalTab):
                 self.line_edit.setText(f"term://{path}")
+                # Messy fix for double term:// bug
+                # Listen, if it works, it works
+                if self.line_edit.text().startswith("term://term://"):
+                    self.line_edit.setText(f"{path}")
             else:
                 self.line_edit.setText(f"file://{path}")
 
@@ -112,8 +117,4 @@ class AddressBarController:
 
         else:
             print(f"[AddressBar] Unknown tab type: {type(current_tab)}")
-        if text.startswith("term://"):
-            path = text[7:] or os.path.expanduser("~")
-            new_tab = self.tab_manager.create_terminal_tab(path)
-            if current_tab:
-                self.tab_manager.destroy_tab(current_tab, new_tab)
+        

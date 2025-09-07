@@ -188,6 +188,8 @@ class TerminalTab(QWidget):
         escaped_path = shlex.quote(new_path)
 
         # Send the cd command
+
+        self._write_to_master("\n".encode("utf-8"))
         cd_command = f"cd {escaped_path}\n".encode("utf-8")
         self._write_to_master(cd_command)
 
@@ -196,7 +198,7 @@ class TerminalTab(QWidget):
         self.path_changed.emit(self.cwd)
 
         # Optional: confirm visually in terminal
-        self._write_to_master(b"pwd\n")
+        #self._write_to_master(b"pwd\n")
 
     def _spawn_pty(self, shell_cmd: str, cwd: str):
         master_fd, slave_fd = pty.openpty()
